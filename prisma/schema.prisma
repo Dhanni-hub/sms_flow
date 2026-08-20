@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  emailVerifiedAt     DateTime?
+  phone               String?
+  passwordHash        String
+  businessId          String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  business            Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+}
+
+model Business {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        User[]
+  wallet       Wallet?
+  contacts     Contact[]
+  groups       ContactGroup[]
+  templates    Template[]
+  senderIds    SenderId[]
+  messages     Message[]
+  campaigns    Campaign[]
+  transactions Transaction[]
+  apiKeys      ApiKey[]
+  webhooks     Webhook[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Wallet {
+  id          String   @id @default(cuid())
+  businessId  String   @unique
+  balanceKobo Int      @default(0)
+  smsCredits  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id         String               @id @default(cuid())
+  businessId String
+  name       String
+  phone      String
+  email      String?
+  tags       String               @default("[]")
+  metadata   String               @default("{}")
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  groups     ContactGroupMember[]
+  messages   Message[]
+
+  @@unique([businessId, phone])
+  @@index([businessId, name])
+}
+
+model ContactGroup {
+  id          String               @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  business    Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  members     ContactGroupMember[]
+  campaigns   CampaignGroup[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model ContactGroupMember {
+  contactId String
+  groupId   String
+  createdAt DateTime     @default(now())
+  contact   Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  group     ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, groupId])
+}
+
+model Template {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  body       String
+  variables  String   @default("[]")
+  useCount   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model SenderId {
+  id              String         @id @default(cuid())
+  businessId      String
+  name            String
+  status          SenderIdStatus @default(PENDING)
+  industry        String?
+  useCase         String
+  website         String?
+  rejectionReason String?
+  submittedAt     DateTime       @default(now())
+  reviewedAt      DateTime?
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  messages        Message[]
+  campaigns       Campaign[]
+
+  @@unique([businessId, name])
+  @@index([businessId, status])
+}
+
+model Message {
+  id                String        @id @default(cuid())
+  businessId        String
+  contactId         String?
+  campaignId        String?
+  senderIdId        String?
+  senderName        String
+  recipientPhone    String
+  recipientName     String?
+  body              String
+  encoding          String
+  segments          Int
+  costKobo          Int
+  status            MessageStatus @default(PENDING)
+  provider          String?
+  providerMessageId String?
+  providerStatus    String?
+  failureReason     String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  business          Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  contact           Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  campaign          Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  senderId          SenderId?     @relation(fields: [senderIdId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status, createdAt])
+  @@index([businessId, recipientPhone])
+}
+
+model Campaign {
+  id             String              @id @default(cuid())
+  businessId     String
+  name           String
+  senderIdId     String?
+  senderName     String
+  body           String
+  status         CampaignStatus      @default(DRAFT)
+  scheduledFor   DateTime?
+  recipientCount Int                 @default(0)
+  sentCount      Int                 @default(0)
+  deliveredCount Int                 @default(0)
+  failedCount    Int                 @default(0)
+  pendingCount   Int                 @default(0)
+  totalCostKobo  Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  business       Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  senderId       SenderId?           @relation(fields: [senderIdId], references: [id], onDelete: SetNull)
+  messages       Message[]
+  groups         CampaignGroup[]
+  recipients     CampaignRecipient[]
+
+  @@index([businessId, status, createdAt])
+}
+
+model CampaignGroup {
+  campaignId String
+  groupId    String
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  group      ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, groupId])
+}
+
+model CampaignRecipient {
+  id         String        @id @default(cuid())
+  campaignId String
+  contactId  String?
+  phone      String
+  name       String?
+  status     MessageStatus @default(PENDING)
+  error      String?
+  campaign   Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  businessId  String
+  reference   String            @unique
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  amountKobo  Int
+  description String
+  metadata    String            @default("{}")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String?
+  type      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  businessId String
+  label      String
+  keyHash    String    @unique
+  keyPreview String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model Webhook {
+  id         String   @id @default(cuid())
+  businessId String
+  url        String
+  events     String   @default("[]")
+  secretHash String
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+enum SenderIdStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+enum TransactionType {
+  WALLET_FUNDING
+  SMS_USAGE
+  REFUND
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  CANCELLED
+}
