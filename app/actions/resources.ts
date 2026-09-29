@@ -540,6 +540,7 @@ export async function startFundingAction(_prev: FormState, formData: FormData): 
   const amountKobo = nairaToKobo(amountNgn);
   const reference = `FUND-${user.businessId}-${Date.now()}`;
   const appUrl = process.env.APP_URL ?? (process.env.NODE_ENV === "production" ? "https://sms-flow-weld.vercel.app" : "http://localhost:3000");
+  let authorizationUrl = "";
 
   try {
     const payment = await initializePaystackTransaction({
@@ -561,13 +562,14 @@ export async function startFundingAction(_prev: FormState, formData: FormData): 
         metadata: JSON.stringify({ accessCode: payment.access_code }),
       },
     });
-
-    redirect(payment.authorization_url);
+    authorizationUrl = payment.authorization_url;
   } catch (error) {
     if (error instanceof PaystackConfigurationError) return { error: error.message };
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return { error: "Payment reference already exists. Try again." };
     return { error: error instanceof Error ? error.message : "Could not initialize payment." };
   }
+
+  redirect(authorizationUrl);
 }
 
 export async function importContactsCsvAction(_prev: FormState, formData: FormData): Promise<FormState> {

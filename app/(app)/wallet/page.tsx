@@ -31,7 +31,7 @@ export default async function WalletPage() {
         </div>
         <section id="funding" className="scroll-mt-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
           <h2 className="font-semibold">Fund wallet</h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Payment provider credentials are required before funding can start.</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Continue to Paystack to complete your ₦5,000 wallet funding.</p>
           <ActionForm action={startFundingAction} submitLabel="Start payment" className="mt-4 max-w-sm space-y-3">
             <input type="hidden" name="amount" value="5000" />
           </ActionForm>
