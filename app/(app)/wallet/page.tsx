@@ -1,6 +1,7 @@
 import { startFundingAction } from "@/app/actions/resources";
 import { ActionForm } from "@/components/action-form";
 import { EmptyState, PageBody, PageHeader } from "@/components/page";
+import { Input, Label } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatNaira } from "@/lib/format";
@@ -31,9 +32,12 @@ export default async function WalletPage() {
         </div>
         <section id="funding" className="scroll-mt-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
           <h2 className="font-semibold">Fund wallet</h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Continue to Paystack to complete your ₦5,000 wallet funding.</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">The minimum wallet payment is ₦5,000.</p>
           <ActionForm action={startFundingAction} submitLabel="Start payment" className="mt-4 max-w-sm space-y-3">
-            <input type="hidden" name="amount" value="5000" />
+            <div>
+              <Label htmlFor="amount" required>Amount (NGN)</Label>
+              <Input id="amount" name="amount" type="number" min="5000" step="1" defaultValue="5000" required />
+            </div>
           </ActionForm>
         </section>
         <section id="transactions" className="scroll-mt-28 rounded-lg border border-[var(--border)] bg-[var(--surface)]">

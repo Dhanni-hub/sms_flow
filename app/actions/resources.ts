@@ -536,7 +536,7 @@ export async function deleteCampaignAction(formData: FormData) {
 export async function startFundingAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const amountNgn = Number(formData.get("amount") ?? 0);
-  if (!Number.isFinite(amountNgn) || amountNgn < 100) return { error: "Enter a funding amount of at least ₦100." };
+  if (!Number.isFinite(amountNgn) || amountNgn < 5000) return { error: "Enter a funding amount of at least ₦5,000." };
   const amountKobo = nairaToKobo(amountNgn);
   const reference = `FUND-${user.businessId}-${Date.now()}`;
   const appUrl = process.env.APP_URL ?? (process.env.NODE_ENV === "production" ? "https://sms-flow-weld.vercel.app" : "http://localhost:3000");
