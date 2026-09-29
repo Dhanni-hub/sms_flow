@@ -539,13 +539,14 @@ export async function startFundingAction(_prev: FormState, formData: FormData): 
   if (!Number.isFinite(amountNgn) || amountNgn < 100) return { error: "Enter a funding amount of at least ₦100." };
   const amountKobo = nairaToKobo(amountNgn);
   const reference = `FUND-${user.businessId}-${Date.now()}`;
+  const appUrl = process.env.APP_URL ?? (process.env.NODE_ENV === "production" ? "https://sms-flow-weld.vercel.app" : "http://localhost:3000");
 
   try {
     const payment = await initializePaystackTransaction({
       email: user.email,
       amountKobo,
       reference,
-      callbackUrl: `${process.env.APP_URL ?? "http://localhost:3000"}/api/paystack/verify?reference=${encodeURIComponent(reference)}`,
+      callbackUrl: `${appUrl}/api/paystack/verify?reference=${encodeURIComponent(reference)}`,
       metadata: { businessId: user.businessId, userId: user.id, purpose: "wallet_funding" },
     });
 
