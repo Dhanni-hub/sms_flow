@@ -43,8 +43,8 @@ export function MessagesSentChart({ data }: { data: DayPoint[] }) {
         <desc id="messages-chart-desc">Line chart showing SMS sent from Monday to Sunday using database message records.</desc>
         <defs>
           <linearGradient id="smsflow-area" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#9b5cff" stopOpacity="0.42" />
-            <stop offset="100%" stopColor="#9b5cff" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#D4A017" stopOpacity="0.36" />
+            <stop offset="100%" stopColor="#DC2626" stopOpacity="0.05" />
           </linearGradient>
           <filter id="smsflow-glow" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="4" result="blur" />
@@ -59,7 +59,7 @@ export function MessagesSentChart({ data }: { data: DayPoint[] }) {
           const value = Math.round(max * (1 - tick));
           return (
             <g key={tick}>
-              <line x1={padding.left} x2={padding.left + plotWidth} y1={y} y2={y} stroke="rgb(148 163 255 / 0.12)" strokeDasharray="4 6" />
+              <line x1={padding.left} x2={padding.left + plotWidth} y1={y} y2={y} stroke="rgb(212 160 23 / 0.18)" strokeDasharray="4 6" />
               <text x={padding.left - 12} y={y + 4} textAnchor="end" className="fill-[var(--text-muted)] text-[11px]">
                 {value}
               </text>
@@ -67,11 +67,11 @@ export function MessagesSentChart({ data }: { data: DayPoint[] }) {
           );
         })}
         <polygon points={area} fill="url(#smsflow-area)" />
-        <polyline points={line} fill="none" stroke="#a855f7" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" filter="url(#smsflow-glow)" />
+        <polyline points={line} fill="none" stroke="#D4A017" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" filter="url(#smsflow-glow)" />
         {points.map((point, index) => (
           <g key={point.label}>
             <line x1={point.x} x2={point.x} y1={padding.top} y2={padding.top + plotHeight} stroke="transparent" strokeWidth={54} onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} tabIndex={0} aria-label={`${point.label}: ${point.count} messages`} />
-            <circle cx={point.x} cy={point.y} r={active === index ? 6 : 4.5} fill="#fff" stroke="#a855f7" strokeWidth="3" />
+            <circle cx={point.x} cy={point.y} r={active === index ? 6 : 4.5} fill="#fff" stroke="#D4A017" strokeWidth="3" />
             <text x={point.x} y={height - 12} textAnchor="middle" className="fill-[var(--text-secondary)] text-[12px]">
               {point.label.slice(0, 3)}
             </text>
@@ -79,7 +79,7 @@ export function MessagesSentChart({ data }: { data: DayPoint[] }) {
         ))}
       </svg>
       {activePoint && (
-        <div className="pointer-events-none absolute rounded-lg border border-[var(--border-strong)] bg-[rgb(5_10_28_/_0.96)] px-3 py-2 text-xs shadow-[var(--shadow-lg)]" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${Math.max(0, activePoint.y - 12)}px`, transform: "translate(-50%, -100%)" }}>
+        <div className="pointer-events-none absolute rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-xs shadow-[var(--shadow-lg)]" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${Math.max(0, activePoint.y - 12)}px`, transform: "translate(-50%, -100%)" }}>
           <p className="font-medium text-[var(--text-primary)]">{activePoint.label}</p>
           <p className="mt-0.5 text-[var(--text-secondary)]">{activePoint.count} messages</p>
         </div>
@@ -105,7 +105,7 @@ export function StatusDonutChart({ data }: { data: StatusPoint[] }) {
         <svg className="h-full w-full -rotate-90" viewBox="0 0 200 200" role="img" aria-labelledby="status-chart-title status-chart-desc">
           <title id="status-chart-title">Messages by status</title>
           <desc id="status-chart-desc">Donut chart of delivered, pending, failed, and queued SMS records.</desc>
-          <circle cx="100" cy="100" r={radius} fill="none" stroke="rgb(148 163 255 / 0.1)" strokeWidth="32" />
+          <circle cx="100" cy="100" r={radius} fill="none" stroke="rgb(232 215 167 / 0.72)" strokeWidth="32" />
           {data.map((point, index) => {
             const length = (point.count / total) * circumference;
             const node = (

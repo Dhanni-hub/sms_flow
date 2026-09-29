@@ -1,5 +1,5 @@
-const CACHE_NAME = "smsflow-shell-v1";
-const SHELL_ASSETS = ["/", "/manifest.webmanifest"];
+const CACHE_NAME = "smsflow-shell-v2";
+const SHELL_ASSETS = ["/offline.html", "/manifest.webmanifest", "/icons/smsflow.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)));
@@ -21,6 +21,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
+    return;
+  }
+
+  if (!["style", "script", "image", "font"].includes(request.destination)) return;
+
   event.respondWith(
     fetch(request)
       .then((response) => {
@@ -33,7 +40,6 @@ self.addEventListener("fetch", (event) => {
       .catch(async () => {
         const cached = await caches.match(request);
         if (cached) return cached;
-        if (request.mode === "navigate") return caches.match("/");
         throw new Error("Offline and no cached response available.");
       })
   );

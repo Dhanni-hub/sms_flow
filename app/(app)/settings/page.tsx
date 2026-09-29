@@ -37,6 +37,15 @@ export default async function SettingsPage() {
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Business profile used across SMSFlow.</p>
           <ActionForm action={updateBusinessSettingsAction} submitLabel="Save business" className="mt-5 max-w-xl space-y-4">
             <div><Label htmlFor="businessName">Business name</Label><Input id="businessName" name="businessName" defaultValue={user.business.name} required /></div>
+            <div>
+              <Label htmlFor="senderName">Monthly sender name</Label>
+              <Input id="senderName" name="senderName" defaultValue={user.business.senderName ?? ""} placeholder="SMSFLOW" maxLength={11} />
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                {user.business.senderName && user.business.senderNameSetAt
+                  ? `Current sender name: ${user.business.senderName}. You can update it once every 30 days.`
+                  : "Set a sender name for outgoing SMS. It can be updated once every 30 days."}
+              </p>
+            </div>
           </ActionForm>
         </section>
 
@@ -130,7 +139,7 @@ export default async function SettingsPage() {
 
         <section id="appearance" className="app-panel scroll-mt-28 rounded-2xl p-5">
           <h2 className="font-semibold">Appearance</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Use the theme button in the top bar to switch between light and dark modes. Your choice is persisted by the application theme provider.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">SMSFlow uses a permanent premium light identity with white surfaces, gold primary actions, red accents, and high-contrast business typography.</p>
         </section>
       </PageBody>
     </>

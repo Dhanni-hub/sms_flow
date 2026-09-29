@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -27,6 +28,8 @@ model Business {
   id           String        @id @default(cuid())
   name         String
   slug         String        @unique
+  senderName   String?
+  senderNameSetAt DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   users        User[]
@@ -71,6 +74,7 @@ model Wallet {
   businessId  String   @unique
   balanceKobo Int      @default(0)
   smsCredits  Int      @default(0)
+  freeMessageUsed Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)

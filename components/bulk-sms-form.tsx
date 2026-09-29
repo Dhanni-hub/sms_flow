@@ -11,16 +11,15 @@ import { estimateCost } from "@/lib/pricing_config";
 
 type ContactOption = { id: string; name: string; phone: string };
 type GroupOption = { id: string; name: string; count: number };
-type SenderOption = { id: string; name: string };
 
 export function BulkSmsForm({
   contacts,
   groups,
-  senderIds,
+  freeMessageUsed,
 }: {
   contacts: ContactOption[];
   groups: GroupOption[];
-  senderIds: SenderOption[];
+  freeMessageUsed: boolean;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(sendBulkSmsAction, {});
   const [query, setQuery] = React.useState("");
@@ -31,7 +30,8 @@ export function BulkSmsForm({
   const selectedGroupRecipientEstimate = groups.filter((group) => selectedGroups.has(group.id)).reduce((sum, group) => sum + group.count, 0);
   const recipientEstimate = selectedContacts.size + selectedGroupRecipientEstimate;
   const totalSegments = recipientEstimate * segmentInfo.segments;
-  const estimatedCost = recipientEstimate * estimateCost(segmentInfo.segments);
+  const chargeableRecipients = Math.max(0, recipientEstimate - (freeMessageUsed ? 0 : 1));
+  const estimatedCost = chargeableRecipients * estimateCost(segmentInfo.segments);
   const visibleContacts = contacts.filter((contact) => `${contact.name} ${contact.phone}`.toLowerCase().includes(query.toLowerCase()));
 
   function toggleContact(id: string) {
@@ -119,13 +119,6 @@ export function BulkSmsForm({
               <Input id="name" name="name" placeholder="August customer update" required />
             </div>
             <div>
-              <Label htmlFor="senderId">Sender ID</Label>
-              <select id="senderId" name="senderId" required className="h-10 w-full rounded-lg px-3 text-sm">
-                <option value="">Select approved sender ID</option>
-                {senderIds.map((sender) => <option key={sender.id} value={sender.id}>{sender.name}</option>)}
-              </select>
-            </div>
-            <div>
               <Label htmlFor="body">SMS body</Label>
               <textarea id="body" name="body" value={message} onChange={(event) => setMessage(event.target.value)} rows={7} required className="w-full rounded-lg px-3 py-2 text-sm" placeholder="Write the message to send to selected recipients." />
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--text-muted)]">
@@ -154,7 +147,7 @@ export function BulkSmsForm({
           <p className="text-xs text-[var(--text-muted)]">Message preview</p>
           <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">{message || "Your composed SMS will appear here."}</p>
         </div>
-        <Button type="submit" loading={pending} className="mt-5 w-full" disabled={pending || recipientEstimate === 0 || senderIds.length === 0 || !message.trim()}>
+        <Button type="submit" loading={pending} className="mt-5 w-full" disabled={pending || recipientEstimate === 0 || !message.trim()}>
           Confirm bulk send
         </Button>
         <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">If the SMS provider is not configured, submission will fail clearly without charging the wallet or creating fake delivery success.</p>

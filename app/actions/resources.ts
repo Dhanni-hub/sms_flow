@@ -35,6 +35,31 @@ function validateSenderId(name: string, useCase: string) {
   return null;
 }
 
+const SENDER_NAME_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
+function formatBusinessSenderName(value?: string | null) {
+  const cleaned = (value ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 11).toUpperCase();
+  return cleaned.length >= 3 ? cleaned : null;
+}
+
+async function resolveEffectiveSenderName(businessId: string, senderId?: string | null) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { name: true, senderName: true, senderNameSetAt: true },
+  });
+  if (business?.senderName) {
+    return business.senderName;
+  }
+  if (senderId) {
+    const approvedSender = await prisma.senderId.findFirst({
+      where: { id: senderId, businessId, status: "APPROVED" },
+      select: { name: true },
+    });
+    if (approvedSender) return approvedSender.name;
+  }
+  return formatBusinessSenderName(business?.name) ?? "SMSFLOW";
+}
+
 export async function createContactAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = contactSchema.safeParse({ ...Object.fromEntries(formData), groupIds: formArray(formData, "groupIds") });
@@ -210,34 +235,51 @@ export async function sendSmsAction(_prev: FormState, formData: FormData): Promi
   const parsed = sendSmsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
-  const sender = await prisma.senderId.findFirst({ where: { id: parsed.data.senderId, businessId: user.businessId, status: "APPROVED" } });
-  if (!sender) return { error: "Select an approved sender ID before sending." };
+  const contact = await prisma.contact.findFirst({
+    where: { businessId: user.businessId, phone: parsed.data.recipientPhone },
+    select: { id: true, name: true },
+  });
+  if (!contact) return { error: "Choose a contact saved in this workspace." };
+
+  const senderId = parsed.data.senderId?.trim() || null;
+  const sender = senderId ? await prisma.senderId.findFirst({ where: { id: senderId, businessId: user.businessId, status: "APPROVED" } }) : null;
 
   const segments = calculateSmsSegments(parsed.data.body);
   const costKobo = estimateCostKobo(segments.segments);
   const wallet = await prisma.wallet.findUnique({ where: { businessId: user.businessId } });
-  if (!wallet || wallet.balanceKobo < costKobo) return { error: "Insufficient wallet balance." };
+  if (!wallet) return { error: "Wallet is not initialized for this workspace." };
+  const freeMessageUsed = wallet.freeMessageUsed;
+  const chargeKobo = freeMessageUsed ? costKobo : 0;
+  if (chargeKobo > 0 && wallet.balanceKobo < chargeKobo) return { error: "Insufficient wallet balance." };
+  const senderName = await resolveEffectiveSenderName(user.businessId, senderId);
 
   let providerResult;
   try {
-    providerResult = await getSmsProvider().send({ sender: sender.name, to: parsed.data.recipientPhone, body: parsed.data.body });
+    providerResult = await getSmsProvider().send({ sender: senderName, to: parsed.data.recipientPhone, body: parsed.data.body });
   } catch (error) {
     if (error instanceof SmsProviderConfigurationError) return { error: error.message };
     return { error: error instanceof Error ? error.message : "SMS provider failed." };
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.wallet.update({ where: { businessId: user.businessId }, data: { balanceKobo: { decrement: costKobo }, smsCredits: { decrement: segments.segments } } });
+    const walletUpdate: Prisma.WalletUpdateInput = { freeMessageUsed: true };
+    if (chargeKobo > 0) {
+      walletUpdate.balanceKobo = { decrement: chargeKobo };
+      walletUpdate.smsCredits = { decrement: segments.segments };
+    }
+    await tx.wallet.update({ where: { businessId: user.businessId }, data: walletUpdate });
     await tx.message.create({
       data: {
         businessId: user.businessId,
-        senderIdId: sender.id,
-        senderName: sender.name,
+        contactId: contact.id,
+        senderIdId: sender?.id ?? null,
+        senderName,
         recipientPhone: parsed.data.recipientPhone,
+        recipientName: contact.name,
         body: parsed.data.body,
         encoding: segments.encoding,
         segments: segments.segments,
-        costKobo,
+        costKobo: chargeKobo,
         status: "SENT",
         sentAt: new Date(),
         provider: providerResult.provider,
@@ -245,16 +287,18 @@ export async function sendSmsAction(_prev: FormState, formData: FormData): Promi
         providerStatus: providerResult.providerStatus,
       },
     });
-    await tx.transaction.create({
-      data: {
-        businessId: user.businessId,
-        reference: `SMS-${Date.now()}`,
-        type: TransactionType.SMS_USAGE,
-        status: TransactionStatus.SUCCESSFUL,
-        amountKobo: -costKobo,
-        description: `SMS to ${parsed.data.recipientPhone}`,
-      },
-    });
+    if (chargeKobo > 0) {
+      await tx.transaction.create({
+        data: {
+          businessId: user.businessId,
+          reference: `SMS-${Date.now()}`,
+          type: TransactionType.SMS_USAGE,
+          status: TransactionStatus.SUCCESSFUL,
+          amountKobo: -chargeKobo,
+          description: `SMS to ${parsed.data.recipientPhone}`,
+        },
+      });
+    }
   });
 
   revalidatePath("/send");
@@ -266,7 +310,7 @@ export async function sendSmsAction(_prev: FormState, formData: FormData): Promi
 
 export async function sendBulkSmsAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const senderId = String(formData.get("senderId") ?? "");
+  const senderId = String(formData.get("senderId") ?? "").trim() || null;
   const body = String(formData.get("body") ?? "").trim();
   const name = String(formData.get("name") ?? "Bulk SMS").trim() || "Bulk SMS";
   const scheduledForRaw = String(formData.get("scheduledFor") ?? "");
@@ -275,8 +319,7 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
 
   if (!body) return { error: "Message is required." };
 
-  const sender = await prisma.senderId.findFirst({ where: { id: senderId, businessId: user.businessId, status: "APPROVED" } });
-  if (!sender) return { error: "Select an approved sender ID." };
+  const sender = senderId ? await prisma.senderId.findFirst({ where: { id: senderId, businessId: user.businessId, status: "APPROVED" } }) : null;
 
   const contacts = await prisma.contact.findMany({
     where: {
@@ -294,16 +337,19 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
   const costPerRecipientKobo = estimateCostKobo(segments.segments);
   const totalEstimatedCostKobo = costPerRecipientKobo * recipients.length;
   const wallet = await prisma.wallet.findUnique({ where: { businessId: user.businessId } });
-  if (!wallet || wallet.balanceKobo < totalEstimatedCostKobo) return { error: "Insufficient wallet balance for this bulk send." };
+  if (!wallet) return { error: "Wallet is not initialized for this workspace." };
+  const estimatedChargeKobo = wallet.freeMessageUsed ? totalEstimatedCostKobo : Math.max(0, totalEstimatedCostKobo - costPerRecipientKobo);
+  if (wallet.balanceKobo < estimatedChargeKobo) return { error: "Insufficient wallet balance for this bulk send." };
 
   const scheduledFor = scheduledForRaw ? new Date(scheduledForRaw) : null;
   if (scheduledFor) {
+    const senderName = await resolveEffectiveSenderName(user.businessId, senderId);
     await prisma.campaign.create({
       data: {
         businessId: user.businessId,
         name,
-        senderIdId: sender.id,
-        senderName: sender.name,
+        senderIdId: sender?.id ?? null,
+        senderName,
         body,
         status: "SCHEDULED",
         scheduledFor,
@@ -328,9 +374,10 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
   }
 
   const results: Array<{ contact: (typeof recipients)[number]; status: MessageStatus; provider?: string; providerMessageId?: string; providerStatus?: string; failureReason?: string }> = [];
+  const senderName = await resolveEffectiveSenderName(user.businessId, senderId);
   for (const contact of recipients) {
     try {
-      const result = await provider.send({ sender: sender.name, to: contact.phone, body });
+      const result = await provider.send({ sender: senderName, to: contact.phone, body });
       results.push({ contact, status: MessageStatus.SENT, provider: result.provider, providerMessageId: result.providerMessageId, providerStatus: result.providerStatus });
     } catch (error) {
       if (error instanceof SmsProviderConfigurationError) return { error: error.message };
@@ -340,15 +387,25 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
 
   const sentCount = results.filter((result) => result.status === MessageStatus.SENT).length;
   const failedCount = results.length - sentCount;
-  const chargedKobo = sentCount * costPerRecipientKobo;
+  let freeMessagePending = !wallet.freeMessageUsed && sentCount > 0;
+  const chargedResults = results.map((result) => {
+    if (result.status !== MessageStatus.SENT) return { ...result, costKobo: 0 };
+    if (freeMessagePending) {
+      freeMessagePending = false;
+      return { ...result, costKobo: 0 };
+    }
+    return { ...result, costKobo: costPerRecipientKobo };
+  });
+  const chargedKobo = chargedResults.reduce((sum, result) => sum + result.costKobo, 0);
+  const chargedRecipientCount = chargedResults.filter((result) => result.status === MessageStatus.SENT && result.costKobo > 0).length;
 
   await prisma.$transaction(async (tx) => {
     const campaign = await tx.campaign.create({
       data: {
         businessId: user.businessId,
         name,
-        senderIdId: sender.id,
-        senderName: sender.name,
+        senderIdId: sender?.id ?? null,
+        senderName,
         body,
         status: sentCount ? "SENT" : "FAILED",
         recipientCount: recipients.length,
@@ -361,18 +418,18 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
       },
     });
     await tx.message.createMany({
-      data: results.map((result) => ({
+      data: chargedResults.map((result) => ({
         businessId: user.businessId,
         contactId: result.contact.id,
         campaignId: campaign.id,
-        senderIdId: sender.id,
-        senderName: sender.name,
+        senderIdId: sender?.id ?? null,
+        senderName,
         recipientPhone: result.contact.phone,
         recipientName: result.contact.name,
         body,
         encoding: segments.encoding,
         segments: segments.segments,
-        costKobo: result.status === MessageStatus.SENT ? costPerRecipientKobo : 0,
+        costKobo: result.costKobo,
         status: result.status,
         sentAt: result.status === MessageStatus.SENT ? new Date() : null,
         provider: result.provider,
@@ -381,8 +438,15 @@ export async function sendBulkSmsAction(_prev: FormState, formData: FormData): P
         failureReason: result.failureReason,
       })),
     });
+    if (sentCount > 0) {
+      const walletUpdate: Prisma.WalletUpdateInput = { freeMessageUsed: true };
+      if (chargedKobo > 0) {
+        walletUpdate.balanceKobo = { decrement: chargedKobo };
+        walletUpdate.smsCredits = { decrement: chargedRecipientCount * segments.segments };
+      }
+      await tx.wallet.update({ where: { businessId: user.businessId }, data: walletUpdate });
+    }
     if (chargedKobo > 0) {
-      await tx.wallet.update({ where: { businessId: user.businessId }, data: { balanceKobo: { decrement: chargedKobo }, smsCredits: { decrement: sentCount * segments.segments } } });
       await tx.transaction.create({
         data: {
           businessId: user.businessId,
@@ -408,8 +472,8 @@ export async function createCampaignAction(_prev: FormState, formData: FormData)
   const parsed = campaignSchema.safeParse({ ...Object.fromEntries(formData), groupIds: formArray(formData, "groupIds"), contactIds: formArray(formData, "contactIds") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
-  const sender = await prisma.senderId.findFirst({ where: { id: parsed.data.senderId, businessId: user.businessId, status: "APPROVED" } });
-  if (!sender) return { error: "Select an approved sender ID." };
+  const senderId = parsed.data.senderId?.trim() || null;
+  const sender = senderId ? await prisma.senderId.findFirst({ where: { id: senderId, businessId: user.businessId, status: "APPROVED" } }) : null;
 
   const contacts = await prisma.contact.findMany({
     where: {
@@ -426,13 +490,14 @@ export async function createCampaignAction(_prev: FormState, formData: FormData)
   const segments = calculateSmsSegments(parsed.data.body);
   const totalCostKobo = estimateCostKobo(segments.segments, unique.length);
   const scheduledFor = parsed.data.scheduledFor ? new Date(parsed.data.scheduledFor) : null;
+  const senderName = await resolveEffectiveSenderName(user.businessId, senderId);
 
   await prisma.campaign.create({
     data: {
       businessId: user.businessId,
       name: parsed.data.name,
-      senderIdId: sender.id,
-      senderName: sender.name,
+      senderIdId: sender?.id ?? null,
+      senderName,
       body: parsed.data.body,
       status: scheduledFor ? "SCHEDULED" : "DRAFT",
       scheduledFor,
@@ -553,8 +618,30 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
 export async function updateBusinessSettingsAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const name = String(formData.get("businessName") ?? "").trim();
+  const senderName = String(formData.get("senderName") ?? "").trim();
   if (name.length < 2) return { error: "Business name is required." };
-  await prisma.business.update({ where: { id: user.businessId }, data: { name } });
+
+  const updates: Prisma.BusinessUpdateInput = { name };
+  if (senderName) {
+    const normalizedSenderName = formatBusinessSenderName(senderName);
+    if (!normalizedSenderName) return { error: "Sender name must be 3-11 letters or numbers." };
+
+    const currentBusiness = await prisma.business.findUnique({
+      where: { id: user.businessId },
+      select: { senderName: true, senderNameSetAt: true },
+    });
+    const updateWindowOpen = !currentBusiness?.senderNameSetAt || Date.now() - currentBusiness.senderNameSetAt.getTime() >= SENDER_NAME_MONTH_MS;
+    if (!updateWindowOpen && currentBusiness?.senderName !== normalizedSenderName) {
+      return { error: "You can update your sender name once every 30 days." };
+    }
+
+    if (updateWindowOpen) {
+      updates.senderName = normalizedSenderName;
+      updates.senderNameSetAt = new Date();
+    }
+  }
+
+  await prisma.business.update({ where: { id: user.businessId }, data: updates });
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   return { success: "Business settings updated." };

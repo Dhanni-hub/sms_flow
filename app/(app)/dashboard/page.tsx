@@ -11,10 +11,10 @@ import { koboToNaira } from "@/lib/money";
 import { CalendarDays, CheckCircle2, Clock3, MessageSquareText, Send, TrendingUp, Wallet } from "lucide-react";
 
 const statusColors = {
-  delivered: "#16d27f",
-  pending: "#f8b84e",
-  failed: "#ff5470",
-  queued: "#4f8dff",
+  delivered: "#16A34A",
+  pending: "#DC2626",
+  failed: "#DC2626",
+  queued: "#7C3AED",
 };
 
 export default async function DashboardPage() {
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
               <Link href="/messaging/campaigns" className="text-sm font-medium text-[var(--brand-hover)] hover:underline">View all</Link>
             </div>
             {recentCampaigns.length === 0 ? (
-              <EmptyState title="No campaigns yet" description="Create your first campaign after adding contacts and an approved sender ID." />
+              <EmptyState title="No campaigns yet" description="Create your first campaign after adding contacts." />
             ) : (
               <div className="responsive-table">
                 <table className="data-table">

@@ -26,8 +26,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           ref={ref}
           className={cn(
-            "flex h-10 w-full rounded-lg border bg-[rgb(8_14_32_/_0.86)] px-3 text-sm text-[var(--text-primary)] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.03)] outline-none transition-colors placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50",
-            error ? "border-[var(--error)]" : "border-[var(--border-strong)] focus:border-[var(--border-focus)]",
+            "flex h-10 w-full rounded-lg border bg-white px-3 text-sm text-[var(--text-primary)] shadow-[var(--shadow-xs)] outline-none transition-colors placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:bg-[var(--surface-sunken)] disabled:text-[var(--text-disabled)]",
+            error ? "border-[var(--error)]" : "border-[var(--border-subtle)] focus:border-[var(--border-focus)]",
             !error && "focus:shadow-[var(--shadow-focus)]",
             leadingIcon && "pl-9",
             trailingElement && "pr-10",

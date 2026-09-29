@@ -22,7 +22,7 @@ export default async function SenderIdsPage() {
               <div><Label htmlFor="useCase">Use case</Label><textarea id="useCase" name="useCase" rows={4} required className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm" /></div>
             </ActionForm>
           </div>
-          {senderIds.length === 0 ? <EmptyState title="No sender IDs yet" description="Request a sender ID before sending branded SMS." /> : (
+          {senderIds.length === 0 ? <EmptyState title="No sender IDs yet" description="Sender IDs are optional; set your monthly sender name in Settings to brand outgoing messages." /> : (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)]">
               {senderIds.map((sender) => (
                 <div key={sender.id} className="p-4">

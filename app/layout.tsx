@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { fontVariables } from "@/lib/fonts";
-import { ThemeProvider } from "@/components/shared/theme-provider";
 import { ToastProvider } from "@/components/shared/toast-provider";
 import { NetworkStatusBanner } from "@/components/shared/network-status-banner";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "SMSFlow",
   },
 };
@@ -26,23 +25,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0d" },
-  ],
+  themeColor: "#d4a017",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={`${fontVariables} font-sans antialiased`}>
-        <ThemeProvider>
-          <ToastProvider>
-            <NetworkStatusBanner />
-            <ServiceWorkerRegister />
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
+        <ToastProvider>
+          <NetworkStatusBanner />
+          <ServiceWorkerRegister />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

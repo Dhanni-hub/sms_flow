@@ -7,8 +7,6 @@
 // the `lib/services/*` layer into these shared types or into components.
 // ============================================================================
 
-export type ThemeMode = "light" | "dark" | "system";
-
 export type AccountType = "business" | "organization" | "personal";
 
 export interface User {

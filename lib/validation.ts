@@ -59,7 +59,7 @@ export const senderIdSchema = z.object({
 });
 
 export const sendSmsSchema = z.object({
-  senderId: z.string().min(1, "Select a sender ID."),
+  senderId: z.string().trim().optional().or(z.literal("")),
   recipientPhone: z.string().trim().transform((value, ctx) => {
     const normalized = normalizeNigerianPhone(value);
     if (!normalized) {
@@ -74,7 +74,7 @@ export const sendSmsSchema = z.object({
 export const campaignSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "Campaign name is required."),
-  senderId: z.string().min(1, "Select a sender ID."),
+  senderId: z.string().trim().optional().or(z.literal("")),
   body: z.string().trim().min(1, "Message is required."),
   groupIds: z.array(z.string()).default([]),
   contactIds: z.array(z.string()).default([]),

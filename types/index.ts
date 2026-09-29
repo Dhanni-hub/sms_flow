@@ -18,7 +18,6 @@ export type {
   SenderIdStatus,
   SmsMessage,
   SmsSegmentInfo,
-  ThemeMode,
   ToastPayload,
   ToastVariant,
   Transaction,

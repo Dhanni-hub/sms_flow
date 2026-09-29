@@ -18,7 +18,7 @@ export function PageBody({ children }: { children: React.ReactNode }) {
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[rgb(8_15_34_/_0.42)] p-8 text-center">
+    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-warm)] p-8 text-center">
       <p className="font-medium text-[var(--text-primary)]">{title}</p>
       <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
     </div>

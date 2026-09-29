@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { logoutAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,6 @@ import {
   LogOut,
   Menu,
   MessageSquareText,
-  Moon,
   Search,
   Send,
   Settings,
@@ -47,7 +45,6 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
   const [query, setQuery] = React.useState("");
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { resolvedTheme, setTheme } = useTheme();
 
   React.useEffect(() => {
     setOpen(false);
@@ -74,7 +71,7 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-transparent text-[var(--text-primary)] lg:grid lg:h-screen lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] lg:overflow-hidden">
-      <aside className="hidden border-r border-[var(--border)] bg-[var(--surface-sunken)] backdrop-blur-xl lg:flex lg:h-screen lg:flex-col">
+      <aside className="hidden border-r border-[var(--border)] bg-[var(--surface)] lg:flex lg:h-screen lg:flex-col">
         <SidebarContent businessName={businessName} pathname={pathname} />
         <div className="border-t border-[var(--border)] p-4">
           <div className="mb-3 rounded-xl border border-[var(--brand-subtle-border)] bg-[var(--brand-subtle)] p-4">
@@ -94,7 +91,7 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
       </aside>
 
       <div className="min-w-0 lg:h-screen lg:overflow-y-auto">
-        <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)] px-4 py-4 backdrop-blur-xl sm:px-6 lg:h-[var(--topbar-height)] lg:px-8">
+        <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[rgb(255_255_255_/_0.92)] px-4 py-4 backdrop-blur-xl sm:px-6 lg:h-[var(--topbar-height)] lg:px-8">
           <div className="flex items-center gap-3">
             <Button type="button" variant="secondary" size="icon" className="lg:hidden" aria-label="Open navigation" onClick={() => setOpen(true)}>
               <Menu className="h-5 w-5" />
@@ -104,7 +101,7 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 leadingIcon={<Search className="h-4 w-4" />}
-                trailingElement={<span className="hidden rounded-md border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] sm:inline">⌘ K</span>}
+                trailingElement={<span className="hidden rounded-md border border-[var(--border)] bg-[var(--surface-warm)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] sm:inline">Ctrl K</span>}
                 placeholder="Search anything..."
                 aria-label="Search SMSFlow"
               />
@@ -119,9 +116,6 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
               <Link href="/settings?tab=notifications">
                 <Bell className="h-5 w-5" />
               </Link>
-            </Button>
-            <Button type="button" variant="ghost" size="icon" aria-label="Toggle theme" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
-              <Moon className="h-5 w-5" />
             </Button>
             <Link href="/settings?tab=profile" className="hidden min-w-0 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 transition hover:bg-[var(--surface-hover)] md:flex">
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--brand-subtle-border)] bg-[var(--brand-subtle)] text-xs font-semibold text-[var(--brand-hover)]">
@@ -139,8 +133,8 @@ export function AppShellNav({ businessName, userName, userEmail, children }: App
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
-          <button className="absolute inset-0 bg-black/60" aria-label="Close navigation" onClick={() => setOpen(false)} />
-          <div className="relative flex h-full w-[min(88vw,340px)] flex-col border-r border-[var(--border-strong)] bg-[var(--surface-sunken)] shadow-[0_0_70px_rgb(124_60_255_/_0.28)]">
+          <button className="absolute inset-0 bg-black/30" aria-label="Close navigation" onClick={() => setOpen(false)} />
+          <div className="relative flex h-full w-[min(88vw,340px)] flex-col border-r border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]">
             <div className="flex items-center justify-between border-b border-[var(--border)] p-4">
               <Brand businessName={businessName} />
               <Button type="button" variant="ghost" size="icon" aria-label="Close navigation" onClick={() => setOpen(false)}>
@@ -169,7 +163,7 @@ function SidebarContent({ businessName, pathname }: { businessName: string; path
 function Brand({ businessName }: { businessName: string }) {
   return (
     <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#635bff,#8b5cf6)] text-white shadow-[0_0_32px_rgb(124_60_255_/_0.42)]">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--brand-subtle-border)] bg-[linear-gradient(135deg,var(--brand-gold-light),var(--brand-red))] text-[var(--text-primary)] shadow-[var(--shadow-sm)]">
         <MessageSquareText className="h-5 w-5" />
       </span>
       <span className="min-w-0">
@@ -182,7 +176,7 @@ function Brand({ businessName }: { businessName: string }) {
 
 function SidebarLinks({ pathname }: { pathname: string }) {
   return (
-    <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4 [scrollbar-color:rgb(124_60_255_/_0.35)_transparent] [scrollbar-width:thin]">
+    <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4 [scrollbar-color:rgb(212_160_23_/_0.45)_transparent] [scrollbar-width:thin]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -192,7 +186,7 @@ function SidebarLinks({ pathname }: { pathname: string }) {
             href={item.href}
             className={`group flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] ${
               active || (item.href === "/messaging" && ["/send", "/messages", "/campaigns", "/templates"].some((prefix) => pathname.startsWith(prefix))) || (item.href === "/contacts" && pathname.startsWith("/groups")) || (item.href === "/billing" && pathname.startsWith("/wallet"))
-                ? "bg-[linear-gradient(90deg,rgb(124_60_255_/_0.88),rgb(74_58_255_/_0.52))] text-white shadow-[0_0_28px_rgb(124_60_255_/_0.22)]"
+                ? "border-l-4 border-[var(--brand)] bg-[var(--brand-subtle)] pl-2 text-[var(--text-primary)] shadow-[var(--shadow-xs)] [&_svg]:text-[var(--brand-hover)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
             }`}
           >
@@ -204,3 +198,4 @@ function SidebarLinks({ pathname }: { pathname: string }) {
     </nav>
   );
 }
+

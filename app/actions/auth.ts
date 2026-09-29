@@ -29,40 +29,50 @@ export async function signUpAction(_prev: ActionState, formData: FormData): Prom
   const parsed = signUpSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details." };
 
-  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (existing) return { error: "An account already exists for this email." };
+  try {
+    const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    if (existing) return { error: "An account already exists for this email." };
 
-  const user = await prisma.user.create({
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone || null,
-      passwordHash: hashPassword(parsed.data.password),
-      business: {
-        create: {
-          name: parsed.data.businessName,
-          slug: await uniqueBusinessSlug(parsed.data.businessName),
-          wallet: { create: {} },
+    const user = await prisma.user.create({
+      data: {
+        name: parsed.data.name,
+        email: parsed.data.email,
+        phone: parsed.data.phone || null,
+        passwordHash: hashPassword(parsed.data.password),
+        business: {
+          create: {
+            name: parsed.data.businessName,
+            slug: await uniqueBusinessSlug(parsed.data.businessName),
+            wallet: { create: {} },
+          },
         },
       },
-    },
-  });
+    });
 
-  await createSession(user.id);
-  redirect("/dashboard");
+    await createSession(user.id);
+    redirect("/dashboard");
+  } catch (error) {
+    console.error("Sign-up database error:", error);
+    return { error: "The database is currently unavailable. Please try again in a moment." };
+  }
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details." };
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
-    return { error: "Invalid email or password." };
-  }
+  try {
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
+      return { error: "Invalid email or password." };
+    }
 
-  await createSession(user.id);
-  redirect("/dashboard");
+    await createSession(user.id);
+    redirect("/dashboard");
+  } catch (error) {
+    console.error("Login database error:", error);
+    return { error: "The database is currently unavailable. Please try again in a moment." };
+  }
 }
 
 export async function logoutAction() {
@@ -74,35 +84,45 @@ export async function forgotPasswordAction(_prev: ActionState, formData: FormDat
   const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter your email." };
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return { success: "If the email exists, a reset link has been created." };
+  try {
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    if (!user) return { success: "If the email exists, a reset link has been created." };
 
-  const token = createToken();
-  await prisma.passwordResetToken.create({
-    data: {
-      tokenHash: hashToken(token),
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-    },
-  });
+    const token = createToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        tokenHash: hashToken(token),
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      },
+    });
 
-  return {
-    success: `Password reset token created for local development: ${token}`,
-  };
+    return {
+      success: `Password reset token created for local development: ${token}`,
+    };
+  } catch (error) {
+    console.error("Forgot password database error:", error);
+    return { error: "The database is currently unavailable. Please try again in a moment." };
+  }
 }
 
 export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = resetPasswordSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details." };
 
-  const reset = await prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(parsed.data.token) } });
-  if (!reset || reset.usedAt || reset.expiresAt <= new Date()) return { error: "Reset link is invalid or expired." };
+  try {
+    const reset = await prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(parsed.data.token) } });
+    if (!reset || reset.usedAt || reset.expiresAt <= new Date()) return { error: "Reset link is invalid or expired." };
 
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: reset.userId }, data: { passwordHash: hashPassword(parsed.data.password) } }),
-    prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
-    prisma.session.deleteMany({ where: { userId: reset.userId } }),
-  ]);
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: reset.userId }, data: { passwordHash: hashPassword(parsed.data.password) } }),
+      prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+      prisma.session.deleteMany({ where: { userId: reset.userId } }),
+    ]);
 
-  redirect("/login");
+    redirect("/login");
+  } catch (error) {
+    console.error("Reset password database error:", error);
+    return { error: "The database is currently unavailable. Please try again in a moment." };
+  }
 }

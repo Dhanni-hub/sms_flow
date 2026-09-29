@@ -2,8 +2,20 @@
   "name": "SMSFlow",
   "short_name": "SMSFlow",
   "description": "Send SMS to Nigerian numbers from a funded wallet.",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0d",
-  "theme_color": "#6366f1"
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#ffffff",
+  "theme_color": "#d4a017",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/smsflow.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

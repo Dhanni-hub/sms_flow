@@ -12,11 +12,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "border border-[rgb(190_170_255_/_0.38)] bg-[linear-gradient(135deg,#635bff,#8b5cf6)] text-[var(--text-on-brand)] shadow-[0_0_28px_rgb(124_60_255_/_0.28)] hover:shadow-[0_0_38px_rgb(124_60_255_/_0.36)] active:bg-[var(--brand-active)]",
+          "border-2 border-[var(--brand-gold-dark)] bg-[linear-gradient(135deg,var(--brand-gold-light),var(--brand))] text-[var(--text-on-brand)] shadow-[var(--shadow-sm)] hover:border-[var(--brand-red-dark)] hover:bg-[linear-gradient(135deg,var(--brand),var(--brand-red))] hover:shadow-[var(--shadow-md)] active:bg-[var(--brand-active)]",
         secondary:
-          "border border-[var(--border-strong)] bg-[rgb(14_22_48_/_0.68)] text-[var(--text-primary)] shadow-[var(--shadow-xs)] hover:bg-[var(--surface-hover)]",
+          "border-2 border-[var(--brand-subtle-border)] bg-[var(--surface)] text-[var(--text-primary)] shadow-[var(--shadow-xs)] hover:bg-[var(--surface-hover)] hover:border-[var(--brand)]",
         outline:
-          "border border-[var(--border-strong)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
+          "border-2 border-[var(--border-strong)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
         ghost: "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]",
         destructive: "bg-[var(--error)] text-white shadow-[var(--shadow-sm)] hover:opacity-90",
         link: "text-[var(--brand)] underline-offset-4 hover:underline p-0 h-auto font-medium",
